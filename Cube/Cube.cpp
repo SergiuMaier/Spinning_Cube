@@ -4,13 +4,25 @@
 -------------------------------------*/
 #include <iostream>
 #include <math.h>
+#include <string.h>
 
 float A, B, C;
-float cubeWidth = 10;
+
+float cubeWidth = 20;
 int width = 160;
 int height = 44;
 float zBuffer[160 * 44];
+char buffer[160 * 44];
 int backgroundASCIICode = ' ';
+int distanceFromCam = 100;
+float K1 = 40;
+
+float incrementSpeed = 0.6;
+
+float x, y, z;
+float ooz;
+float xp, yp;
+int idx;
 
 float calculateX(int i, int j, int k) 
 {
@@ -27,25 +39,56 @@ float calculateZ(int i, int j, int k)
     return k * cos(A) * cos(B) - j * sin(A) * cos(B) + i * sin(B);
 }
 
+void calculateForSurface(float cubeX, float cubeY, float cubeZ, int ch) 
+{
+    x = calculateX(cubeX, cubeY, cubeZ);
+    y = calculateY(cubeX, cubeY, cubeZ);
+    z = calculateZ(cubeX, cubeY, cubeZ) + distanceFromCam;
+
+    ooz = 1 / z;
+    xp = (int)(width / 2 - 2 * cubeWidth + K1 * ooz * x * 2);
+    yp = (int)(height / 2 + K1 * ooz * y);
+
+    idx = xp + yp * width;
+
+    if (idx >= 0 && idx < width * height) {
+        if (ooz > zBuffer[idx]) {
+            zBuffer[idx] = ooz;
+            buffer[idx] = ch;
+        }
+    }
+}
+
 int main()
 {
     std::cout << "\x1b[2J";
     
     while (1) 
     {
+        memset(buffer, backgroundASCIICode, width * height);
+        memset(zBuffer, 0, width * height * 4);
 
+        for (float cubeX = -cubeWidth; cubeX < cubeWidth; cubeX += incrementSpeed) {
+            for (float cubeY = -cubeWidth; cubeY < cubeWidth; cubeY += incrementSpeed) {
+                calculateForSurface(cubeX, cubeY, -cubeWidth, '.');
+                calculateForSurface(cubeWidth, cubeY, cubeX, 'O');
+                calculateForSurface(-cubeWidth, cubeY, -cubeX, '#');
+                calculateForSurface(-cubeX, cubeY, cubeWidth, '@');
+                calculateForSurface(cubeX, -cubeWidth, -cubeY, '~');
+                calculateForSurface(cubeX, cubeWidth, cubeY, '"');
+            }
+        }
+
+        std::cout << "\x1b[H";
+
+        for (int k = 0; k < width * height; k++) 
+        {
+            putchar(k % width ? buffer[k] : 10);
+        }
+
+        A += 0.005;
+        B += 0.005;
     }
 
     return 0;
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
